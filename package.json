@@ -1,0 +1,36 @@
+{
+  "name": "social-auto-publisher",
+  "version": "1.0.0",
+  "description": "Production-grade multi-platform social auto publisher",
+  "main": "dist/jobs/social-publish.job.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:clean": "rm -rf dist && tsc --project tsconfig.json",
+    "start": "node dist/jobs/social-publish.job.js",
+    "dev": "ts-node --project tsconfig.json src/jobs/social-publish.job.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "lint": "eslint 'src/**/*.ts'",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.10.0",
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "prisma": "^5.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

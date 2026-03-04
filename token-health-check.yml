@@ -1,0 +1,53 @@
+# .github/workflows/token-health-check.yml
+# Runs daily to verify all Meta API tokens are valid and not near expiry.
+# Alerts via GitHub Actions failure (triggers email notification to repo members).
+# For Slack/PagerDuty alerts, add a notification step at the bottom.
+
+name: Token Health Check
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # Daily at 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-tokens:
+    name: Verify Meta API Tokens
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Facebook token
+        run: |
+          RESPONSE=$(curl -sf "https://graph.facebook.com/debug_token?input_token=$FB_TOKEN&access_token=$FB_TOKEN")
+          IS_VALID=$(echo $RESPONSE | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const p=JSON.parse(d); console.log(p.data?.is_valid)")
+          EXPIRES_AT=$(echo $RESPONSE | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const p=JSON.parse(d); console.log(p.data?.expires_at ?? 0)")
+          NOW=$(date +%s)
+          DAYS_LEFT=$(( (EXPIRES_AT - NOW) / 86400 ))
+          echo "Facebook token valid: $IS_VALID, days until expiry: $DAYS_LEFT"
+          if [ "$IS_VALID" != "true" ]; then echo "::error::Facebook token is INVALID"; exit 1; fi
+          if [ "$DAYS_LEFT" -lt 7 ]; then echo "::warning::Facebook token expires in $DAYS_LEFT days — renew now"; fi
+        env:
+          FB_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+
+      - name: Check Instagram token
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            "https://graph.facebook.com/${{ vars.INSTAGRAM_API_VERSION }}/${{ secrets.INSTAGRAM_ACCOUNT_ID }}?fields=id&access_token=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}")
+          echo "Instagram API response: $STATUS"
+          if [ "$STATUS" != "200" ]; then echo "::error::Instagram token check failed (HTTP $STATUS)"; exit 1; fi
+
+      - name: Check Threads token
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            "https://graph.threads.net/${{ vars.THREADS_API_VERSION }}/${{ secrets.THREADS_USER_ID }}?fields=id&access_token=${{ secrets.THREADS_ACCESS_TOKEN }}")
+          echo "Threads API response: $STATUS"
+          if [ "$STATUS" != "200" ]; then echo "::error::Threads token check failed (HTTP $STATUS)"; exit 1; fi

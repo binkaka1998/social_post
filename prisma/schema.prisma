@@ -1,0 +1,202 @@
+// Crawler Project - Prisma Schema
+// This project only writes to the database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Store information
+model GoldStore {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique // "SJC", "PNJ", "DOJI", "BTMC"
+  name      String
+  address   String?
+  phone     String?
+  website   String?
+  logo      String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  dailyPrices GoldDailyPrice[]
+  prices      GoldPrice[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("gold_stores")
+}
+
+// Standardized gold types
+model GoldType {
+  id           Int              @id @default(autoincrement())
+  code         String           @unique // "GOLD_9999", "GOLD_RING_9999", etc.
+  name         String
+  order        Int              @default(999)
+  comparisonId Int?
+  unit         String           @default("lượng")
+  description  String?
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime?        @updatedAt
+  isChart      Boolean          @default(false)
+  dailyPrices  GoldDailyPrice[]
+  prices       GoldPrice[]
+  comparison   Comparison?      @relation(fields: [comparisonId], references: [id])
+
+  @@index([code])
+  @@index([isActive])
+  @@map("gold_types")
+}
+
+// Intraday prices (updated every 15 mins, cleared daily)
+model GoldDailyPrice {
+  id         Int       @id @default(autoincrement())
+  storeId    Int
+  goldTypeId Int
+  buyPrice   Decimal   @db.Decimal(15, 2)
+  sellPrice  Decimal   @db.Decimal(15, 2)
+  timestamp  DateTime  @default(now())
+  isChart    Boolean   @default(false)
+  dailyCode  String
+  store      GoldStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  goldType   GoldType  @relation(fields: [goldTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, goldTypeId, dailyCode])
+  @@index([storeId, goldTypeId])
+  @@index([timestamp])
+  @@map("gold_daily_prices")
+}
+
+// Historical daily prices (OHLC)
+model GoldPrice {
+  id            Int       @id @default(autoincrement())
+  storeId       Int
+  goldTypeId    Int
+  date          DateTime  @db.Date
+  openBuy       Decimal   @db.Decimal(15, 2)
+  openSell      Decimal   @db.Decimal(15, 2)
+  closeBuy      Decimal   @db.Decimal(15, 2)
+  closeSell     Decimal   @db.Decimal(15, 2)
+  highBuy       Decimal   @db.Decimal(15, 2)
+  highSell      Decimal   @db.Decimal(15, 2)
+  lowBuy        Decimal   @db.Decimal(15, 2)
+  lowSell       Decimal   @db.Decimal(15, 2)
+  avgBuy        Decimal   @db.Decimal(15, 2)
+  avgSell       Decimal   @db.Decimal(15, 2)
+  changeAmount  Decimal   @db.Decimal(15, 2)
+  changePercent Decimal   @db.Decimal(5, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+
+  store    GoldStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  goldType GoldType  @relation(fields: [goldTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, goldTypeId, date])
+  @@index([storeId, goldTypeId, date])
+  @@index([date])
+  @@map("gold_prices")
+}
+
+// Crawler execution logs
+model CrawlerLog {
+  id           Int      @id @default(autoincrement())
+  storeName    String
+  status       String // "SUCCESS", "FAILED", "PARTIAL"
+  itemsCount   Int      @default(0)
+  errorMessage String?  @db.Text
+  startedAt    DateTime
+  completedAt  DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([storeName])
+  @@index([status])
+  @@index([startedAt])
+  @@map("crawler_logs")
+}
+
+model News {
+  id                 Int          @id @default(autoincrement())
+  headlineEn         String
+  headlineVi         String?
+  slugVi             String       @unique
+  slugEn             String       @unique
+  shortEn            String?      @db.Text
+  shortVi            String?      @db.Text
+  contentEn          String       @db.Text
+  contentVi          String?      @db.Text
+  detailLink         String       @unique
+  pageCited          String // 'VnExpress', 'Cafef' (domestic) or 'Kitco', 'DailyForex', 'MarketWatch' (international)
+  hash               String       @unique
+  active             Boolean      @default(false) // false = not published, true = published
+  category           NewsCategory @default(INTERNATIONAL)
+  tags               String[]     @default([]) // Empty for INTERNATIONAL
+  keywords           String[]     @default([]) // Empty for INTERNATIONAL
+  metaDesc           String? // NULL for INTERNATIONAL
+  author             String?
+  featured           Boolean      @default(false)
+  views              Int          @default(0)
+  publishedAt        DateTime?    @default(now())
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime?    @updatedAt
+  // --- Social publishing control ---
+  socialEnabled      Boolean      @default(false)
+  /// Atomic lock flag: set to true before processing, false after.
+  /// Prevents duplicate processing under concurrent cron runs.
+  socialProcessing   Boolean      @default(false)
+  socialProcessingAt DateTime? // When the lock was acquired (for stale-lock detection)
+
+  // --- Per-platform status flags ---
+  postedFacebook  Boolean @default(false)
+  postedInstagram Boolean @default(false)
+  postedThreads   Boolean @default(false)
+
+  // --- Per-platform post IDs (returned by each API) ---
+  facebookPostId   String?
+  instagramMediaId String?
+  threadsPostId    String?
+
+  // --- Error tracking ---
+  socialError      String? @db.Text
+  socialRetryCount Int     @default(0)
+
+  // --- Completion timestamp ---
+  socialPostedAt DateTime?
+
+  @@index([pageCited])
+  @@index([active])
+  @@index([category])
+  @@index([createdAt])
+  @@index([slugVi])
+  @@index([featured])
+  @@index([active, socialEnabled, socialProcessing, postedFacebook, postedInstagram, postedThreads])
+  @@index([socialProcessingAt]) // for stale lock cleanup
+  @@map("news")
+}
+
+model Comparison {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  description String?
+  order       Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+
+  goldTypes GoldType[]
+
+  @@index([code])
+  @@index([isActive])
+  @@index([order])
+  @@map("comparisons")
+}
+
+enum NewsCategory {
+  DOMESTIC // Vietnamese articles with detail pages
+  INTERNATIONAL // Crawled from external sources
+}

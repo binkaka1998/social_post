@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Logs — uploaded as CI artifacts, not committed
+logs/
+*.log
+
+# Prisma generated client (regenerated in CI via prisma generate)
+node_modules/.prisma/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

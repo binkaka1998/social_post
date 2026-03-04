@@ -1,0 +1,55 @@
+# =============================================================
+# systemd Service Unit: /etc/systemd/system/social-publisher.service
+# =============================================================
+# Install:
+#   sudo cp scripts/social-publisher.service /etc/systemd/system/
+#   sudo cp scripts/social-publisher.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable social-publisher.timer
+#   sudo systemctl start social-publisher.timer
+# =============================================================
+
+[Unit]
+Description=Social Auto Publisher - Single Run
+Documentation=https://github.com/your-org/social-publisher
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Ensures the service doesn't start if postgres is not up
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+
+# Run as a dedicated non-root user
+User=appuser
+Group=appuser
+
+# Working directory (where your app is deployed)
+WorkingDirectory=/opt/social-publisher
+
+# Load environment from a protected file (not world-readable)
+EnvironmentFile=/opt/social-publisher/.env
+
+# The command to run
+ExecStart=/usr/bin/node /opt/social-publisher/dist/jobs/social-publish.job.js
+
+# Timeout: kill the process if it runs longer than 4 minutes (before next cron fires)
+TimeoutStartSec=240
+
+# Restart on failure (non-zero exit)
+Restart=no
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/social-publisher/logs
+ProtectHome=true
+
+# Logging: captured by journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=social-publisher
+
+[Install]
+WantedBy=multi-user.target

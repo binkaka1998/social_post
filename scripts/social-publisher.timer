@@ -1,0 +1,22 @@
+# =============================================================
+# systemd Timer Unit: /etc/systemd/system/social-publisher.timer
+# =============================================================
+# Runs the social publisher every 5 minutes.
+# Adjust OnCalendar to change the interval.
+# =============================================================
+
+[Unit]
+Description=Social Auto Publisher Timer
+Requires=social-publisher.service
+
+[Timer]
+# Run every 5 minutes
+OnCalendar=*:0/5
+# Run immediately after boot if missed
+Persistent=true
+# Add random delay up to 30s to avoid thundering herd if multiple servers
+RandomizedDelaySec=30
+Unit=social-publisher.service
+
+[Install]
+WantedBy=timers.target
