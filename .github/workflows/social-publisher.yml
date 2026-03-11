@@ -48,12 +48,12 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build TypeScript
-        run: npm run build
+#      - name: Build TypeScript
+#        run: npm run build
 
       - name: Run social publisher
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: node dist/jobs/social-publish.job.js
+        run: ts-node --project tsconfig.json src/jobs/social-publish.job.ts
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
