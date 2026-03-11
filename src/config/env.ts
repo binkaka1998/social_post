@@ -56,11 +56,11 @@ export const config = Object.freeze({
   },
 
   // Threads API
-  threads: {
-    userId: requireEnv('THREADS_USER_ID'),
-    accessToken: requireEnv('THREADS_ACCESS_TOKEN'),
-    apiVersion: optionalEnv('THREADS_API_VERSION', 'v1.0'),
-  },
+  // threads: {
+  //   userId: requireEnv('THREADS_USER_ID'),
+  //   accessToken: requireEnv('THREADS_ACCESS_TOKEN'),
+  //   apiVersion: optionalEnv('THREADS_API_VERSION', 'v1.0'),
+  // },
 
   // Publisher behavior
   publisher: {
