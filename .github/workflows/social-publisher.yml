@@ -30,7 +30,7 @@ jobs:
   publish:
     name: Publish to Social Platforms
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Must complete before next 5-min window
+    timeout-minutes: 4  # Must complete before next 5-min window
 
     steps:
       - name: Checkout
@@ -48,12 +48,12 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-#      - name: Build TypeScript
-#        run: npm run build
+      - name: Build TypeScript
+        run: npm run build
 
       - name: Run social publisher
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: npm run dev
+        run: node dist/jobs/social-publish.job.js
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
