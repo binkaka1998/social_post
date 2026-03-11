@@ -1,100 +1,92 @@
-## .github/workflows/social-publisher.yml
-## Runs the social publisher on a schedule via GitHub Actions.
-## Also supports manual dispatch for testing.
-#
-#name: Social Auto Publisher
-#
-#on:
-#  schedule:
-#    # Every 5 minutes. GitHub Actions minimum granularity is 5 minutes.
-#    # Note: GitHub does NOT guarantee exact timing — expect ±1-2 min drift.
-#    # For stricter SLAs, keep systemd/PM2 as primary and use this as fallback.
-#    - cron: '*/5 * * * *'
-#
-#  # Manual trigger from GitHub UI (useful for testing + emergency re-runs)
-#  workflow_dispatch:
-#    inputs:
-#      dry_run:
-#        description: 'Dry run (build only, skip actual posting)'
-#        required: false
-#        default: 'false'
-#        type: boolean
-#
-## Prevent overlapping runs. If a run is in progress when the next cron fires,
-## the new run is CANCELLED (not queued). The DB lock handles partial-run safety.
-#concurrency:
-#  group: social-publisher
-#  cancel-in-progress: false  # Let the current run finish; skip the new trigger
-#
-#jobs:
-#  publish:
-#    name: Publish to Social Platforms
-#    runs-on: ubuntu-latest
-#    timeout-minutes: 4  # Must complete before next 5-min window
-#
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Setup Node.js
-#        uses: actions/setup-node@v4
-#        with:
-#          node-version: '20'
-#          cache: 'npm'
-#
-#      - name: Install dependencies
-#        run: npm ci
-#
-#      - name: Generate Prisma client
-#        run: npx prisma generate
-#
-#      - name: Build TypeScript
-#        run: npm run build
-#
-#      - name: Run migrations (safe: migrate deploy is idempotent)
-#        run: npx prisma migrate deploy
-#        env:
-#          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-#
-#      - name: Run social publisher
-#        if: ${{ github.event.inputs.dry_run != 'true' }}
-#        run: node dist/jobs/social-publish.job.js
-#        env:
-#          NODE_ENV: production
-#          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-#          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
-#          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
-#          FACEBOOK_API_VERSION: ${{ vars.FACEBOOK_API_VERSION }}
-#          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-#          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-#          INSTAGRAM_API_VERSION: ${{ vars.INSTAGRAM_API_VERSION }}
-#          INSTAGRAM_FALLBACK_IMAGE_URL: ${{ vars.INSTAGRAM_FALLBACK_IMAGE_URL }}
-#          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
-#          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-#          THREADS_API_VERSION: ${{ vars.THREADS_API_VERSION }}
-#          PUBLISHER_BATCH_SIZE: ${{ vars.PUBLISHER_BATCH_SIZE }}
-#          PUBLISHER_MAX_RETRIES: ${{ vars.PUBLISHER_MAX_RETRIES }}
-#          PUBLISHER_RETRY_BASE_DELAY_MS: ${{ vars.PUBLISHER_RETRY_BASE_DELAY_MS }}
-#          PUBLISHER_RETRY_MAX_DELAY_MS: ${{ vars.PUBLISHER_RETRY_MAX_DELAY_MS }}
-#          PUBLISHER_HTTP_TIMEOUT_MS: ${{ vars.PUBLISHER_HTTP_TIMEOUT_MS }}
-#          PUBLISHER_STALE_LOCK_THRESHOLD_MS: ${{ vars.PUBLISHER_STALE_LOCK_THRESHOLD_MS }}
-#          INSTAGRAM_POLL_MAX_ATTEMPTS: ${{ vars.INSTAGRAM_POLL_MAX_ATTEMPTS }}
-#          INSTAGRAM_POLL_DELAY_MS: ${{ vars.INSTAGRAM_POLL_DELAY_MS }}
-#          LOG_LEVEL: ${{ vars.LOG_LEVEL }}
-#          LOG_FORMAT: json
-#          LOG_DIR: ./logs
-#
-#      - name: Dry run (build verification only)
-#        if: ${{ github.event.inputs.dry_run == 'true' }}
-#        run: echo "Dry run complete — build and Prisma generation succeeded, skipping post execution."
-#
-#      # Upload logs as artifact for post-mortem debugging
-#      # Retained for 7 days to keep storage costs low
-#      - name: Upload logs
-#        if: always()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: publisher-logs-${{ github.run_id }}
-#          path: logs/
-#          retention-days: 7
-#          if-no-files-found: ignore
+# .github/workflows/social-publisher.yml
+# Runs the social publisher on a schedule via GitHub Actions.
+# Also supports manual dispatch for testing.
+
+name: Social Auto Publisher
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub Actions minimum granularity is 5 minutes.
+    # Note: GitHub does NOT guarantee exact timing — expect ±1-2 min drift.
+    # For stricter SLAs, keep systemd/PM2 as primary and use this as fallback.
+    - cron: '*/5 * * * *'
+
+  # Manual trigger from GitHub UI (useful for testing + emergency re-runs)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, skip actual posting)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Prevent overlapping runs. If a run is in progress when the next cron fires,
+# the new run is CANCELLED (not queued). The DB lock handles partial-run safety.
+concurrency:
+  group: social-publisher
+  cancel-in-progress: false  # Let the current run finish; skip the new trigger
+
+jobs:
+  publish:
+    name: Publish to Social Platforms
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Must complete before next 5-min window
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run social publisher
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: node dist/jobs/social-publish.job.js
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_API_VERSION: ${{ vars.FACEBOOK_API_VERSION }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_API_VERSION: ${{ vars.INSTAGRAM_API_VERSION }}
+          INSTAGRAM_FALLBACK_IMAGE_URL: ${{ vars.INSTAGRAM_FALLBACK_IMAGE_URL }}
+          PUBLISHER_BATCH_SIZE: ${{ vars.PUBLISHER_BATCH_SIZE }}
+          PUBLISHER_MAX_RETRIES: ${{ vars.PUBLISHER_MAX_RETRIES }}
+          PUBLISHER_RETRY_BASE_DELAY_MS: ${{ vars.PUBLISHER_RETRY_BASE_DELAY_MS }}
+          PUBLISHER_RETRY_MAX_DELAY_MS: ${{ vars.PUBLISHER_RETRY_MAX_DELAY_MS }}
+          PUBLISHER_HTTP_TIMEOUT_MS: ${{ vars.PUBLISHER_HTTP_TIMEOUT_MS }}
+          PUBLISHER_STALE_LOCK_THRESHOLD_MS: ${{ vars.PUBLISHER_STALE_LOCK_THRESHOLD_MS }}
+          INSTAGRAM_POLL_MAX_ATTEMPTS: ${{ vars.INSTAGRAM_POLL_MAX_ATTEMPTS }}
+          INSTAGRAM_POLL_DELAY_MS: ${{ vars.INSTAGRAM_POLL_DELAY_MS }}
+          LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+          LOG_FORMAT: json
+          LOG_DIR: ./logs
+
+      - name: Dry run (build verification only)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: echo "Dry run complete — build and Prisma generation succeeded, skipping post execution."
+
+      # Upload logs as artifact for post-mortem debugging
+      # Retained for 7 days to keep storage costs low
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publisher-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 7
+          if-no-files-found: ignore
