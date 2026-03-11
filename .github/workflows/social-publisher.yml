@@ -29,6 +29,7 @@ concurrency:
 jobs:
   publish:
     name: Publish to Social Platforms
+    environment: SocialPost
     runs-on: ubuntu-latest
     timeout-minutes: 4  # Must complete before next 5-min window
 
