@@ -53,7 +53,7 @@ jobs:
 
       - name: Run social publisher
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: ts-node --project tsconfig.json src/jobs/social-publish.job.ts
+        run: npm run dev
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
