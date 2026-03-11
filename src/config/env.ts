@@ -3,10 +3,8 @@
 // Fails fast at startup if any required variable is missing.
 
 import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
+dotenv.config();
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value || value.trim() === '') {
