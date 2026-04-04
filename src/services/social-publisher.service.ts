@@ -23,7 +23,7 @@
 
 import { prisma } from '../prisma/client';
 import { FacebookService } from './platforms/facebook.service';
-import { InstagramService } from './platforms/instagram.service';
+// import { InstagramService } from './platforms/instagram.service';
 // import { ThreadsService } from './platforms/threads.service';
 import { config } from '../config/env';
 import { createLogger } from '../utils/logger';
@@ -34,12 +34,12 @@ const logger = createLogger('SocialPublisherService');
 
 export class SocialPublisherService {
   private readonly facebook: FacebookService;
-  private readonly instagram: InstagramService;
+  // private readonly instagram: InstagramService;
   // private readonly threads: ThreadsService;
 
   constructor() {
     this.facebook = new FacebookService();
-    this.instagram = new InstagramService();
+    // this.instagram = new InstagramService();
     // this.threads = new ThreadsService();
   }
 
@@ -212,14 +212,14 @@ export class SocialPublisherService {
     }
 
     // --- Instagram ---
-    if (!news.postedInstagram) {
-      const igResult = await this.instagram.post(payload);
-      results.push(igResult);
-      await this.updatePlatformResult(news.id, 'instagram', igResult);
-    } else {
-      logger.debug('Skipping Instagram (already posted)', logCtx);
-      results.push({ platform: 'instagram', success: true, skipped: true });
-    }
+    // if (!news.postedInstagram) {
+    //   const igResult = await this.instagram.post(payload);
+    //   results.push(igResult);
+    //   await this.updatePlatformResult(news.id, 'instagram', igResult);
+    // } else {
+    //   logger.debug('Skipping Instagram (already posted)', logCtx);
+    //   results.push({ platform: 'instagram', success: true, skipped: true });
+    // }
 
     // --- Threads ---
     // if (!news.postedThreads) {
